@@ -1,0 +1,47 @@
+[
+  {
+    "_id": "seed-1",
+    "title": "Welcome to Notes App! 🚀",
+    "content": "This is a full-stack Notes Management Application built with React, Node.js, Express, and MongoDB.\n\nYou can:\n- Pin/unpin important notes\n- Tag notes with categories and labels\n- Search across titles and content\n- Archive and restore notes\n- Customize note accent colors",
+    "category": "Personal",
+    "labels": [
+      "welcome",
+      "getting-started"
+    ],
+    "color": "#fef3c7",
+    "pinned": true,
+    "archived": false,
+    "createdAt": "2026-10-12T06:06:48.776Z",
+    "updatedAt": "2026-10-12T06:06:48.777Z"
+  },
+  {
+    "_id": "seed-2",
+    "title": "Sprint Tasks & Deadlines 📅",
+    "content": "1. Finalize REST API endpoints and error handling.\n2. Verify search index and category filters.\n3. Complete responsive mobile and desktop layout.\n4. Write clear project documentation and API guides.",
+    "category": "Work",
+    "labels": [
+      "work",
+      "priority"
+    ],
+    "color": "#dcfce7",
+    "pinned": true,
+    "archived": false,
+    "createdAt": "2026-10-12T07:06:48.777Z",
+    "updatedAt": "2026-10-12T07:06:48.777Z"
+  },
+  {
+    "_id": "seed-3",
+    "title": "Product Design Ideas 💡",
+    "content": "Ideas for future version:\n- Markdown preview mode\n- Rich text formatting toolbar\n- Keyboard shortcuts (Cmd+K for quick search)\n- Export notes as PDF and JSON",
+    "category": "Ideas",
+    "labels": [
+      "ideas",
+      "design"
+    ],
+    "color": "#e0e7ff",
+    "pinned": false,
+    "archived": false,
+    "createdAt": "2026-10-12T08:06:48.777Z",
+    "updatedAt": "2026-10-12T08:06:48.777Z"
+  }
+]
