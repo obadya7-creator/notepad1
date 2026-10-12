@@ -504,6 +504,7 @@
   white-space: pre-wrap;
   display: -webkit-box;
   -webkit-line-clamp: 5;
+  line-clamp: 5;
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
@@ -522,6 +523,7 @@
 
 .notes-list .note-content {
   -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .note-tags {
