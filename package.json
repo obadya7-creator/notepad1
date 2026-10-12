@@ -1,0 +1,15 @@
+{
+  "name": "noteflow",
+  "version": "1.0.0",
+  "description": "Full-Stack Notes Management Application (React + Vite + Node.js + Express + MongoDB)",
+  "scripts": {
+    "start:backend": "npm start --prefix backend",
+    "start:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "build:frontend": "npm run build --prefix frontend"
+  },
+  "keywords": ["notes-app", "react", "express", "mongodb", "rest-api", "vite"],
+  "author": "",
+  "license": "MIT"
+}
