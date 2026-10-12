@@ -1,5 +1,6 @@
 import Note from "../models/Note.js";
 import { getDbStatus } from "../config/db.js";
+import { escapeRegex } from "../middleware/validate.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -77,13 +78,20 @@ export const getNotes = async (req, res, next) => {
     const db = getDbStatus();
     if (db.connected) {
       const filter = { archived: isArchived };
-      if (category && category !== "All") filter.category = category;
-      if (label) filter.labels = label;
-      if (pinned !== undefined) filter.pinned = pinned === "true";
-      if (search) {
+      if (category && category !== "All") {
+        filter.category = { $regex: `^${escapeRegex(category)}$`, $options: "i" };
+      }
+      if (label) {
+        filter.labels = label.toLowerCase();
+      }
+      if (pinned !== undefined) {
+        filter.pinned = pinned === "true";
+      }
+      if (search && search.trim()) {
+        const safeRegex = escapeRegex(search.trim());
         filter.$or = [
-          { title: { $regex: search, $options: "i" } },
-          { content: { $regex: search, $options: "i" } },
+          { title: { $regex: safeRegex, $options: "i" } },
+          { content: { $regex: safeRegex, $options: "i" } },
         ];
       }
 
@@ -95,7 +103,7 @@ export const getNotes = async (req, res, next) => {
       return res.json(notes);
     }
 
-    // Fallback store
+    // Resilient Fallback store
     let notes = readFallbackNotes();
     notes = notes.filter((n) => Boolean(n.archived) === isArchived);
 
@@ -108,8 +116,8 @@ export const getNotes = async (req, res, next) => {
     if (pinned !== undefined) {
       notes = notes.filter((n) => Boolean(n.pinned) === (pinned === "true"));
     }
-    if (search) {
-      const q = search.toLowerCase();
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
       notes = notes.filter(
         (n) => n.title?.toLowerCase().includes(q) || n.content?.toLowerCase().includes(q)
       );
@@ -182,16 +190,6 @@ export const createNote = async (req, res, next) => {
   try {
     const { title, content, category = "General", labels = [], color = "#ffffff", pinned = false } = req.body;
 
-    if (!title || !title.trim()) {
-      return res.status(400).json({ message: "Title is required" });
-    }
-    if (title.trim().length > 120) {
-      return res.status(400).json({ message: "Title cannot exceed 120 characters" });
-    }
-    if (!content || !content.trim()) {
-      return res.status(400).json({ message: "Content is required" });
-    }
-
     const db = getDbStatus();
     if (db.connected) {
       const note = await Note.create({
@@ -233,13 +231,17 @@ export const getNoteById = async (req, res, next) => {
     const db = getDbStatus();
     if (db.connected) {
       const note = await Note.findById(req.params.id);
-      if (!note) return res.status(404).json({ message: "Note not found" });
+      if (!note) {
+        return res.status(404).json({ success: false, message: `Note not found with id: ${req.params.id}` });
+      }
       return res.json(note);
     }
 
     const notes = readFallbackNotes();
     const note = notes.find((n) => n._id === req.params.id);
-    if (!note) return res.status(404).json({ message: "Note not found" });
+    if (!note) {
+      return res.status(404).json({ success: false, message: `Note not found with id: ${req.params.id}` });
+    }
     return res.json(note);
   } catch (e) {
     next(e);
@@ -251,40 +253,34 @@ export const updateNote = async (req, res, next) => {
   try {
     const { title, content, category, labels, color, pinned, archived } = req.body;
 
-    if (title !== undefined && (!title || !title.trim())) {
-      return res.status(400).json({ message: "Title cannot be empty" });
-    }
-    if (title && title.trim().length > 120) {
-      return res.status(400).json({ message: "Title cannot exceed 120 characters" });
-    }
-    if (content !== undefined && (!content || !content.trim())) {
-      return res.status(400).json({ message: "Content cannot be empty" });
-    }
-
     const db = getDbStatus();
     if (db.connected) {
-      const note = await Note.findByIdAndUpdate(
-        req.params.id,
-        {
-          ...(title !== undefined && { title: title.trim() }),
-          ...(content !== undefined && { content: content.trim() }),
-          ...(category !== undefined && { category: category.trim() || "General" }),
-          ...(labels !== undefined && {
-            labels: Array.isArray(labels) ? labels.map((l) => l.trim().toLowerCase()).filter(Boolean) : [],
-          }),
-          ...(color !== undefined && { color }),
-          ...(pinned !== undefined && { pinned: Boolean(pinned) }),
-          ...(archived !== undefined && { archived: Boolean(archived) }),
-        },
-        { new: true, runValidators: true }
-      );
-      if (!note) return res.status(404).json({ message: "Note not found" });
+      const updateData = {};
+      if (title !== undefined) updateData.title = title.trim();
+      if (content !== undefined) updateData.content = content.trim();
+      if (category !== undefined) updateData.category = category.trim() || "General";
+      if (labels !== undefined) {
+        updateData.labels = Array.isArray(labels) ? labels.map((l) => l.trim().toLowerCase()).filter(Boolean) : [];
+      }
+      if (color !== undefined) updateData.color = color;
+      if (pinned !== undefined) updateData.pinned = Boolean(pinned);
+      if (archived !== undefined) updateData.archived = Boolean(archived);
+
+      const note = await Note.findByIdAndUpdate(req.params.id, updateData, {
+        new: true,
+        runValidators: true,
+      });
+      if (!note) {
+        return res.status(404).json({ success: false, message: `Note not found with id: ${req.params.id}` });
+      }
       return res.json(note);
     }
 
     const notes = readFallbackNotes();
     const index = notes.findIndex((n) => n._id === req.params.id);
-    if (index === -1) return res.status(404).json({ message: "Note not found" });
+    if (index === -1) {
+      return res.status(404).json({ success: false, message: `Note not found with id: ${req.params.id}` });
+    }
 
     notes[index] = {
       ...notes[index],
@@ -312,17 +308,21 @@ export const deleteNote = async (req, res, next) => {
     const db = getDbStatus();
     if (db.connected) {
       const note = await Note.findByIdAndDelete(req.params.id);
-      if (!note) return res.status(404).json({ message: "Note not found" });
-      return res.json({ message: "Note deleted successfully", id: req.params.id });
+      if (!note) {
+        return res.status(404).json({ success: false, message: `Note not found with id: ${req.params.id}` });
+      }
+      return res.json({ success: true, message: "Note deleted successfully", id: req.params.id });
     }
 
     const notes = readFallbackNotes();
     const index = notes.findIndex((n) => n._id === req.params.id);
-    if (index === -1) return res.status(404).json({ message: "Note not found" });
+    if (index === -1) {
+      return res.status(404).json({ success: false, message: `Note not found with id: ${req.params.id}` });
+    }
 
     notes.splice(index, 1);
     writeFallbackNotes(notes);
-    return res.json({ message: "Note deleted successfully", id: req.params.id });
+    return res.json({ success: true, message: "Note deleted successfully", id: req.params.id });
   } catch (e) {
     next(e);
   }
@@ -338,13 +338,17 @@ export const toggleFlag = (field, value) => async (req, res, next) => {
         { [field]: value },
         { new: true }
       );
-      if (!note) return res.status(404).json({ message: "Note not found" });
+      if (!note) {
+        return res.status(404).json({ success: false, message: `Note not found with id: ${req.params.id}` });
+      }
       return res.json(note);
     }
 
     const notes = readFallbackNotes();
     const index = notes.findIndex((n) => n._id === req.params.id);
-    if (index === -1) return res.status(404).json({ message: "Note not found" });
+    if (index === -1) {
+      return res.status(404).json({ success: false, message: `Note not found with id: ${req.params.id}` });
+    }
 
     notes[index][field] = value;
     notes[index].updatedAt = new Date().toISOString();
