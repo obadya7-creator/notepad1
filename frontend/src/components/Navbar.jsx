@@ -8,6 +8,8 @@ import {
   Menu,
   X,
   Database,
+  User,
+  LogOut,
 } from "lucide-react";
 
 export default function Navbar({
@@ -18,6 +20,8 @@ export default function Navbar({
   toggleTheme,
   dbStatus,
   onToggleSidebar,
+  user,
+  onSignOut,
 }) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
@@ -104,11 +108,58 @@ export default function Navbar({
           {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
         </button>
 
+        {/* User Profile Chip */}
+        {user && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.3rem 0.65rem 0.3rem 0.4rem",
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border-color)",
+              borderRadius: "var(--radius-full)",
+              fontSize: "0.825rem",
+              fontWeight: 600,
+            }}
+          >
+            <div
+              style={{
+                width: "26px",
+                height: "26px",
+                borderRadius: "50%",
+                background: "var(--primary-light)",
+                color: "var(--primary-text)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <User size={14} />
+            </div>
+            <span style={{ maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {user.username}
+            </span>
+          </div>
+        )}
+
         {/* Create Note Button */}
         <button className="btn-primary" onClick={onOpenCreateModal}>
           <Plus size={18} />
           <span>New Note</span>
         </button>
+
+        {/* Sign Out Button */}
+        {user && (
+          <button
+            className="btn-icon"
+            onClick={onSignOut}
+            title="Sign out of Vault"
+            aria-label="Sign out"
+          >
+            <LogOut size={17} />
+          </button>
+        )}
       </div>
     </header>
   );

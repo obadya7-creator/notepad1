@@ -1,23 +1,40 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import dotenv from "dotenv";
 import { connectDB, getDbStatus } from "./config/db.js";
+import authRoutes from "./routes/authRoutes.js";
 import notesRoutes from "./routes/notes.routes.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 
 dotenv.config();
 
+// Verify JWT_SECRET is configured
+if (!process.env.JWT_SECRET) {
+  console.error("❌ FATAL: JWT_SECRET environment variable is missing.");
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS and JSON body parser
+// Security Headers with Helmet
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // Let frontend dev server manage CSP in dev
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
+// Enable CORS with JSON body parser (limited to 1MB)
 app.use(
   cors({
     origin: "*",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
 // Request logging
 app.use((req, res, next) => {
@@ -29,7 +46,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check endpoint
+// Health check endpoint (public)
 app.get("/api/health", (req, res) => {
   const db = getDbStatus();
   res.json({
@@ -40,7 +57,10 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Notes API Routes
+// Authentication routes
+app.use("/api/auth", authRoutes);
+
+// Notes API Routes (protected)
 app.use("/api/notes", notesRoutes);
 
 // Error Middlewares
@@ -51,6 +71,7 @@ app.use(errorHandler);
 const server = app.listen(PORT, async () => {
   console.log(`🚀 Notes API Server running at http://localhost:${PORT}`);
   console.log(`📡 Health Check: http://localhost:${PORT}/api/health`);
+  console.log(`🔐 Auth Endpoints: http://localhost:${PORT}/api/auth`);
   console.log(`📝 Notes Endpoint: http://localhost:${PORT}/api/notes`);
   await connectDB();
 });

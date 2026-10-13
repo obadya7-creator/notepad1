@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as c from "../controllers/notes.controller.js";
+import { requireAuth } from "../middleware/auth.js";
 import {
   validateCreateNote,
   validateUpdateNote,
@@ -7,6 +8,9 @@ import {
 } from "../middleware/validate.js";
 
 const router = Router();
+
+// Protect all note routes with authentication
+router.use(requireAuth);
 
 // Metadata & Stats
 router.get("/meta/stats", c.getStats);

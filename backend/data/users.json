@@ -1,0 +1,32 @@
+[
+  {
+    "_id": "user-1791869302339-rb5bv",
+    "username": "testuser_1791869301762",
+    "authHash": "$2b$12$vkO/9MZzhxyGsQHQi3NKS.9S8/gQtLz0OJ7f.3KKmoo3Mk2ftDoxq",
+    "recoveryHash": "$2b$12$zXx1PNwc8hB1dEByCGFG7eh0ooKS084GweX8n1zalkgzkldIZ/ghC",
+    "failedLoginAttempts": 0,
+    "lockUntil": null,
+    "createdAt": "2026-10-13T05:28:22.339Z",
+    "updatedAt": "2026-10-13T05:28:23.451Z"
+  },
+  {
+    "_id": "user-1791869509869-86it3",
+    "username": "alice_1791869509336",
+    "authHash": "$2b$12$F3v/dcg6RahxNcTgS3.LN.dTw7QL7KbKt1azirgrUrMv6Ehiw1Iny",
+    "recoveryHash": "$2b$12$OK/o/JHJzzK.q8Dom7wPb.z.TbPCtSMgHAQ3sSmCG0OPYaZCbTF5W",
+    "failedLoginAttempts": 0,
+    "lockUntil": null,
+    "createdAt": "2026-10-13T05:31:49.869Z",
+    "updatedAt": "2026-10-13T05:31:51.136Z"
+  },
+  {
+    "_id": "user-1791869510381-7rj0y",
+    "username": "bob_1791869509877",
+    "authHash": "$2b$12$l7SOL0.v0PfZxmyNjczZEuujJSQxb3rD0lt8qZG5ZDcTGuVtlJvGW",
+    "recoveryHash": "$2b$12$c4re1TKeFdHBwyYKgZ9tPusR5zuOnTGG902rjKtnLawQYBcSqzOu2",
+    "failedLoginAttempts": 1,
+    "lockUntil": null,
+    "createdAt": "2026-10-13T05:31:50.381Z",
+    "updatedAt": "2026-10-13T05:31:50.381Z"
+  }
+]

@@ -2,6 +2,12 @@ import mongoose from "mongoose";
 
 const noteSchema = new mongoose.Schema(
   {
+    owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: [true, "Note owner is required"],
+      index: true,
+    },
     title: {
       type: String,
       required: [true, "Title is required"],
@@ -43,7 +49,8 @@ const noteSchema = new mongoose.Schema(
   }
 );
 
-// Add text indexing for search
+// Add text indexing and owner compound indexing for search
+noteSchema.index({ owner: 1, createdAt: -1 });
 noteSchema.index({ title: "text", content: "text" });
 
 export default mongoose.model("Note", noteSchema);

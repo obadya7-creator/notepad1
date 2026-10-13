@@ -1,23 +1,47 @@
-# 📝 NoteFlow — Full-Stack Notes Management Application
+# 📝 NoteFlow Vault — Secure Full-Stack Notes Management Application
 
-A clean, modern, and responsive Notes Management Studio built with **React + Vite**, **Node.js + Express**, and **MongoDB (Mongoose)** with persistent storage fallback.
+A clean, modern, and responsive Notes Management Studio built with **React + Vite**, **Node.js + Express**, and **MongoDB (Mongoose)** with persistent storage fallback and **Zero-Knowledge 3-Layer Authentication**.
+
+---
+
+## 🔐 Authentication & Security Model
+
+### 3-Layer Password Protection
+1. **Browser**: `SHA-256(username:password)` is computed client-side using Web Crypto API. Raw passwords **never** leave the browser or traverse the network.
+2. **Server**: Double-hashes incoming pre-hashes using `bcrypt` (cost factor 12). Even a database breach exposes nothing usable.
+3. **Database**: Stores only `bcrypt(SHA-256(username:password))` with user-scoped data isolation.
+
+### One-Time Recovery Key
+- A cryptographically secure 32-character **recovery key** is generated and displayed **once** at signup.
+- Enables password reset via `POST /api/auth/reset` if a user forgets their password.
+- Resetting a password automatically rotates and issues a new recovery key.
+
+### Session & Protection Features
+- **Session Tokens**: JWT stored in `sessionStorage` (automatically cleared on tab close) with 1-hour expiry.
+- **Account Lockout**: 5 consecutive failed login attempts trigger an automatic 15-minute cooldown.
+- **Rate Limiting**: Authentication endpoints are rate-limited to 10 attempts per 15 minutes per IP.
+- **User-Scoped Isolation**: Every note query enforces `owner: req.userId` — cross-user data access is impossible.
+- **Generic Errors**: "Invalid username or password" prevents username enumeration.
 
 ---
 
 ## 🌟 Features & Capabilities
 
-1. **Modern Notes Dashboard**: Sleek, distraction-free dashboard with Dark and Light mode support, glassmorphism navbar, and crisp typography.
-2. **Complete CRUD Operations**: Create, view, edit, and permanently delete notes with real-time UI updates.
-3. **Pin & Unpin**: Pin priority notes to keep them anchored at the top of your dashboard.
-4. **Archive & Restore**: Clean archive management to declutter active notes without losing valuable ideas.
-5. **Real-Time Full-Text Search**: Instant search by note title and content body with debounced queries.
-6. **Categories & Labels**: Organize notes by categories (*Work, Personal, Ideas, Study, Tasks, Custom*) and hashtags/labels (*#design, #sprint*).
-7. **Sorting & Filtering**: Sort by *Latest Updated*, *Oldest*, and *Title (A-Z)*. Filter by active category, tag, or view mode.
-8. **View Modes**: Switch dynamically between responsive **Grid View** (multi-column cards) and **List View** (compact rows).
-9. **Form Validation & Safety**: Inline form validations preventing empty titles or content, enforcing character limits (120 chars for title, 10,000 for body).
-10. **Visual Feedback & Modals**: Smooth animated modals, confirmation dialogs before note deletion, and instant toast notifications.
-11. **Responsive Design**: Optimized across mobile phones, tablets, laptops, and desktop screens with a mobile drawer navigation.
-12. **Database Integration**: Fully connected with MongoDB (via Mongoose). Includes resilient persistent file fallback (`data/notes.json`) so your application never crashes if the local database daemon is temporarily unreachable.
+1. **Vault Authentication Screen**: Dedicated Sign In, Create Account, and Password Reset tabs with live password strength meter and theme switching.
+2. **One-Time Recovery Banner**: High-visibility banner allowing users to copy their recovery key immediately upon signup.
+3. **User-Scoped Notes**: Notes belong strictly to the authenticated user.
+4. **Modern Notes Dashboard**: Sleek, distraction-free dashboard with Dark and Light mode support, glassmorphism navbar, and crisp typography.
+5. **Complete CRUD Operations**: Create, view, edit, and permanently delete notes with real-time UI updates.
+6. **Pin & Unpin**: Pin priority notes to keep them anchored at the top of your dashboard.
+7. **Archive & Restore**: Clean archive management to declutter active notes without losing valuable ideas.
+8. **Real-Time Full-Text Search**: Instant search by note title and content body with debounced queries.
+9. **Categories & Labels**: Organize notes by categories (*Work, Personal, Ideas, Study, Tasks, Custom*) and hashtags/labels (*#design, #sprint*).
+10. **Sorting & Filtering**: Sort by *Latest Updated*, *Oldest*, and *Title (A-Z)*. Filter by active category, tag, or view mode.
+11. **View Modes**: Switch dynamically between responsive **Grid View** (multi-column cards) and **List View** (compact rows).
+12. **Form Validation & Safety**: Inline form validations preventing empty titles or content, enforcing character limits (120 chars for title, 10,000 for body).
+13. **Visual Feedback & Modals**: Smooth animated modals, confirmation dialogs before note deletion, and instant toast notifications.
+14. **Responsive Design**: Optimized across mobile phones, tablets, laptops, and desktop screens with a mobile drawer navigation.
+15. **Database Integration**: Fully connected with MongoDB (via Mongoose) and resilient persistent file fallback (`data/notes.json` and `data/users.json`).
 
 ---
 
@@ -29,8 +53,10 @@ A clean, modern, and responsive Notes Management Studio built with **React + Vit
 | **Icons & UI** | Lucide React | Modern, clean vector iconography |
 | **Styling** | Custom CSS System | Tailored responsive design system with theme variables |
 | **Backend** | Node.js, Express 4 / 5 | Modular REST API server with routing & middleware |
-| **Database** | MongoDB & Mongoose 8 | Document database with text indexes & schema validations |
-| **Persistence** | Mongoose + Local JSON | Dual-mode persistence ensuring data longevity across refreshes |
+| **Authentication** | JWT, bcryptjs, Web Crypto SHA-256 | 3-layer zero-knowledge authentication pipeline |
+| **Security** | Helmet, express-rate-limit, express-mongo-sanitize, HPP | Rate limiting, security headers, injection guards |
+| **Database** | MongoDB & Mongoose 8 | Document database with user-scoped indexes |
+| **Persistence** | Mongoose + Local JSON | Dual-mode persistence ensuring data longevity |
 
 ---
 
@@ -42,25 +68,34 @@ Notepad/
 │   ├── config/
 │   │   └── db.js                 # Database connection & health status manager
 │   ├── controllers/
-│   │   └── notes.controller.js   # REST CRUD, pin, archive, search controller
+│   │   ├── authController.js     # Register, Login, Reset, Me endpoints
+│   │   └── notes.controller.js   # User-scoped REST CRUD controller
 │   ├── data/
-│   │   └── notes.json            # Persistent storage store
+│   │   ├── notes.json            # Fallback persistent note storage
+│   │   └── users.json            # Fallback persistent user storage
 │   ├── middleware/
-│   │   └── errorHandler.js       # Centralized 404 & error formatting middleware
+│   │   ├── auth.js               # JWT verification middleware (requireAuth)
+│   │   ├── errorHandler.js       # Centralized 404 & error formatting middleware
+│   │   └── validate.js           # Request payload & ID validation middleware
 │   ├── models/
-│   │   └── Note.js               # Mongoose Note schema with validations & indexes
+│   │   ├── Note.js               # Mongoose Note schema with owner reference
+│   │   └── User.js               # Mongoose User schema with authHash & lockout
 │   ├── routes/
-│   │   └── notes.routes.js       # Express routes for /api/notes
-│   ├── .env                      # Environment variables
+│   │   ├── authRoutes.js         # Rate-limited auth endpoints
+│   │   └── notes.routes.js       # Protected routes for /api/notes
+│   ├── .env                      # Environment variables (PORT, MONGO_URI, JWT_SECRET)
 │   ├── .env.example              # Environment variables template
 │   ├── package.json              # Backend dependencies & scripts
 │   └── server.js                 # Express server entry point
 ├── frontend/
 │   ├── src/
 │   │   ├── api/
-│   │   │   └── notesApi.js       # API client for backend communication
+│   │   │   ├── authApi.js        # Auth API client & session storage
+│   │   │   └── notesApi.js       # Notes API client with Bearer token interceptor
 │   │   ├── components/
-│   │   │   ├── Navbar.jsx        # Top bar with search, theme & DB badge
+│   │   │   ├── AuthScreen.jsx    # Sign In, Create Account, Reset Password modal
+│   │   │   ├── RecoveryBanner.jsx# One-time recovery key display banner
+│   │   │   ├── Navbar.jsx        # Top bar with user chip, sign-out, theme & DB badge
 │   │   │   ├── Sidebar.jsx       # Views, category filter, tag cloud
 │   │   │   ├── Toolbar.jsx       # Active view title, sorting & grid/list toggle
 │   │   │   ├── NoteCard.jsx      # Note item with color accents & actions
@@ -70,7 +105,11 @@ Notepad/
 │   │   │   ├── Toast.jsx         # Success / Error / Info toast notifications
 │   │   │   ├── EmptyState.jsx    # Context-aware empty state illustrations
 │   │   │   └── SkeletonLoader.jsx# Shimmer loading placeholders
-│   │   ├── App.jsx               # Central state & layout container
+│   │   ├── hooks/
+│   │   │   └── useAuth.js        # Authentication lifecycle & session restore hook
+│   │   ├── lib/
+│   │   │   └── crypto.js         # Client-side SHA-256 derivation helper
+│   │   ├── App.jsx               # Auth gate & main dashboard layout
 │   │   ├── App.css               # Component layout styling
 │   │   ├── index.css             # Theme design system & typography tokens
 │   │   └── main.jsx              # React mounting root
@@ -86,18 +125,7 @@ Notepad/
 
 ## 🚀 Getting Started & Installation
 
-### Prerequisites
-- **Node.js** (v18.x or newer recommended)
-- **npm** (v9.x or newer)
-- **MongoDB** (Local `mongod` service OR a free [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) cluster)
-
-### 1. Clone & Setup Repository
-```bash
-git clone <your-repository-url>
-cd Notepad
-```
-
-### 2. Backend Setup
+### 1. Backend Setup
 ```bash
 cd backend
 npm install
@@ -108,18 +136,18 @@ Configure `backend/.env`:
 ```env
 PORT=5000
 MONGO_URI=mongodb://127.0.0.1:27017/notesapp
+JWT_SECRET=your_96_character_hex_secret_here
 NODE_ENV=development
 ```
-*(If using MongoDB Atlas, replace `MONGO_URI` with your connection string: `mongodb+srv://<user>:<password>@cluster0.mongodb.net/notesapp?retryWrites=true&w=majority`)*
 
 Start the backend:
 ```bash
-npm start
+npm run dev
 # Server starts on http://localhost:5000
 ```
 
-### 3. Frontend Setup
-In a new terminal window:
+### 2. Frontend Setup
+In a new terminal:
 ```bash
 cd frontend
 npm install
@@ -127,122 +155,35 @@ npm run dev
 # App starts on http://localhost:5173
 ```
 
-Open **`http://localhost:5173`** in your browser.
+Open **`http://localhost:5173`** in your browser to sign in or create an account.
 
 ---
 
 ## 📡 REST API Documentation
 
-Base URL: `http://localhost:5000/api`
+### Authentication (`/api/auth`)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/auth/register` | Register new account with client SHA-256 pre-hash; returns JWT & one-time recovery key |
+| `POST` | `/api/auth/login` | Authenticate with client SHA-256 pre-hash; returns JWT |
+| `GET` | `/api/auth/me` | Fetch current user profile (requires `Bearer <token>`) |
+| `POST` | `/api/auth/reset` | Reset password using 32-character recovery key; returns new JWT & new recovery key |
+
+### Notes (`/api/notes` - All require `Authorization: Bearer <token>`)
 
 | Method | Endpoint | Query Parameters | Description |
 |---|---|---|---|
-| `GET` | `/health` | — | Check API server and database connectivity |
-| `GET` | `/notes` | `search`, `category`, `label`, `sort`, `archived`, `pinned` | Fetch notes matching filter criteria |
-| `GET` | `/notes/meta/stats` | — | Get note statistics (total, active, pinned, archived, tags) |
-| `GET` | `/notes/:id` | — | Retrieve a single note by ID |
-| `POST` | `/notes` | — | Create a new note |
-| `PUT` | `/notes/:id` | — | Update an existing note |
-| `DELETE` | `/notes/:id` | — | Permanently delete a note |
-| `PATCH` | `/notes/:id/pin` | — | Pin a note to the top |
-| `PATCH` | `/notes/:id/unpin` | — | Unpin a note |
-| `PATCH` | `/notes/:id/archive` | — | Move a note to the archive |
-| `PATCH` | `/notes/:id/restore` | — | Restore an archived note |
-
-### Sample Payloads
-
-#### Create Note (`POST /api/notes`)
-```json
-{
-  "title": "Sprint Planning Notes",
-  "content": "Discuss architecture and deployment targets.",
-  "category": "Work",
-  "labels": ["sprint", "planning"],
-  "color": "#f59e0b",
-  "pinned": true
-}
-```
-
-#### Successful Response (`201 Created`)
-```json
-{
-  "_id": "673f1a0e10b2a3c4d5e6f7a8",
-  "title": "Sprint Planning Notes",
-  "content": "Discuss architecture and deployment targets.",
-  "category": "Work",
-  "labels": ["sprint", "planning"],
-  "color": "#f59e0b",
-  "pinned": true,
-  "archived": false,
-  "createdAt": "2026-10-12T08:00:00.000Z",
-  "updatedAt": "2026-10-12T08:00:00.000Z"
-}
-```
-
----
-
-## 🧪 Testing
-
-### Automated API Integration Test
-Run this quick script to test all CRUD, search, pin, and archive endpoints:
-```bash
-node -e "
-async function run() {
-  const r = await fetch('http://localhost:5000/api/notes');
-  const notes = await r.json();
-  console.log('API is active. Fetched notes:', notes.length);
-}
-run();"
-```
-
-### Manual Verification Checklist
-- [x] **Create Note**: Click **New Note**, enter title and content, select category and color, click **Create Note**.
-- [x] **Pin Note**: Click pin icon on any card; note immediately anchors to the top "Pinned" section.
-- [x] **Search**: Type in search bar; notes filter in real time across title and content.
-- [x] **Category Filter**: Select "Work" or "Ideas" in sidebar; only matching notes display.
-- [x] **Archive & Restore**: Click archive icon on card; note disappears from active list and appears under "Archived". Click restore to bring back.
-- [x] **Delete Note**: Click trash icon; confirmation modal appears before permanent deletion.
-- [x] **Persistence**: Refresh browser; all notes, pins, and archive states remain intact.
-- [x] **Theme Toggle**: Click sun/moon icon to switch between Dark and Light mode.
-
----
-
-## 🌐 Deployment Instructions
-
-### 1. Database (MongoDB Atlas)
-1. Create a free M0 cluster on [MongoDB Atlas](https://cloud.mongodb.com/).
-2. Under **Network Access**, add `0.0.0.0/0` (allow access from anywhere).
-3. Under **Database Access**, create a user with read/write privileges.
-4. Copy the connection string into your production environment variable `MONGO_URI`.
-
-### 2. Backend (Render / Railway / Heroku)
-1. Push your repository to GitHub.
-2. Create a new **Web Service** on [Render](https://render.com/).
-3. Set **Root Directory** to `backend`.
-4. Set **Build Command** to `npm install` and **Start Command** to `node server.js`.
-5. Add Environment Variables:
-   - `PORT`: `5000`
-   - `MONGO_URI`: `<your-mongodb-atlas-uri>`
-   - `NODE_ENV`: `production`
-
-### 3. Frontend (Vercel / Netlify)
-1. Create a new project on [Vercel](https://vercel.com/) linked to your repository.
-2. Set **Root Directory** to `frontend`.
-3. Set **Build Command** to `npm run build` and **Output Directory** to `dist`.
-4. If your backend is hosted separately, point API requests in `frontend/src/api/notesApi.js` to your deployed backend URL.
-
----
-
-## 🔄 Optional: Swapping to MySQL (Sequelize)
-
-If your grading rubric or infrastructure requires MySQL instead of MongoDB:
-1. In `backend`: run `npm install sequelize mysql2`.
-2. Replace `backend/models/Note.js` with a Sequelize model definition (`DataTypes.STRING`, `DataTypes.TEXT`, `DataTypes.BOOLEAN`, `DataTypes.JSON` for labels).
-3. In `backend/config/db.js`, initialize `new Sequelize(database, username, password, { dialect: 'mysql' })` and call `await sequelize.sync()`.
-4. The Express route signatures and frontend API remain identical!
+| `GET` | `/api/notes` | `search`, `category`, `label`, `sort`, `archived`, `pinned` | Fetch notes owned by authenticated user |
+| `GET` | `/api/notes/meta/stats` | — | Aggregate statistics for current user's notes |
+| `GET` | `/api/notes/:id` | — | Retrieve a single user-owned note |
+| `POST` | `/api/notes` | — | Create a note scoped to current user |
+| `PUT` | `/api/notes/:id` | — | Update user-owned note |
+| `DELETE` | `/api/notes/:id` | — | Permanently delete user-owned note |
+| `PATCH` | `/api/notes/:id/pin` | — | Pin/unpin note |
+| `PATCH` | `/api/notes/:id/archive` | — | Archive/restore note |
 
 ---
 
 ## 📄 License
 This project is open-source and available under the MIT License.
-# notepad1

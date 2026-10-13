@@ -15,45 +15,7 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 if (!fs.existsSync(DATA_FILE)) {
-  const seedNotes = [
-    {
-      _id: "seed-1",
-      title: "Welcome to Notes App! 🚀",
-      content: "This is a full-stack Notes Management Application built with React, Node.js, Express, and MongoDB.\n\nYou can:\n- Pin/unpin important notes\n- Tag notes with categories and labels\n- Search across titles and content\n- Archive and restore notes\n- Customize note accent colors",
-      category: "Personal",
-      labels: ["welcome", "getting-started"],
-      color: "#fef3c7",
-      pinned: true,
-      archived: false,
-      createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-      updatedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-    },
-    {
-      _id: "seed-2",
-      title: "Sprint Tasks & Deadlines 📅",
-      content: "1. Finalize REST API endpoints and error handling.\n2. Verify search index and category filters.\n3. Complete responsive mobile and desktop layout.\n4. Write clear project documentation and API guides.",
-      category: "Work",
-      labels: ["work", "priority"],
-      color: "#dcfce7",
-      pinned: true,
-      archived: false,
-      createdAt: new Date(Date.now() - 3600000).toISOString(),
-      updatedAt: new Date(Date.now() - 3600000).toISOString(),
-    },
-    {
-      _id: "seed-3",
-      title: "Product Design Ideas 💡",
-      content: "Ideas for future version:\n- Markdown preview mode\n- Rich text formatting toolbar\n- Keyboard shortcuts (Cmd+K for quick search)\n- Export notes as PDF and JSON",
-      category: "Ideas",
-      labels: ["ideas", "design"],
-      color: "#e0e7ff",
-      pinned: false,
-      archived: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ];
-  fs.writeFileSync(DATA_FILE, JSON.stringify(seedNotes, null, 2), "utf8");
+  fs.writeFileSync(DATA_FILE, JSON.stringify([], null, 2), "utf8");
 }
 
 const readFallbackNotes = () => {
@@ -74,10 +36,11 @@ export const getNotes = async (req, res, next) => {
   try {
     const { search, category, label, sort = "latest", archived = "false", pinned } = req.query;
     const isArchived = archived === "true";
+    const userId = req.userId;
 
     const db = getDbStatus();
     if (db.connected) {
-      const filter = { archived: isArchived };
+      const filter = { owner: userId, archived: isArchived };
       if (category && category !== "All") {
         filter.category = { $regex: `^${escapeRegex(category)}$`, $options: "i" };
       }
@@ -103,9 +66,9 @@ export const getNotes = async (req, res, next) => {
       return res.json(notes);
     }
 
-    // Resilient Fallback store
+    // Resilient Fallback store scoped to user
     let notes = readFallbackNotes();
-    notes = notes.filter((n) => Boolean(n.archived) === isArchived);
+    notes = notes.filter((n) => String(n.owner) === String(userId) && Boolean(n.archived) === isArchived);
 
     if (category && category !== "All") {
       notes = notes.filter((n) => n.category?.toLowerCase() === category.toLowerCase());
@@ -144,9 +107,11 @@ export const getNotes = async (req, res, next) => {
 // GET /api/notes/meta/stats
 export const getStats = async (req, res, next) => {
   try {
+    const userId = req.userId;
     const db = getDbStatus();
+
     if (db.connected) {
-      const all = await Note.find({});
+      const all = await Note.find({ owner: userId });
       const active = all.filter((n) => !n.archived);
       const pinned = active.filter((n) => n.pinned).length;
       const archived = all.filter((n) => n.archived).length;
@@ -164,7 +129,7 @@ export const getStats = async (req, res, next) => {
       });
     }
 
-    const all = readFallbackNotes();
+    const all = readFallbackNotes().filter((n) => String(n.owner) === String(userId));
     const active = all.filter((n) => !n.archived);
     const pinned = active.filter((n) => n.pinned).length;
     const archived = all.filter((n) => n.archived).length;
@@ -188,11 +153,13 @@ export const getStats = async (req, res, next) => {
 // POST /api/notes
 export const createNote = async (req, res, next) => {
   try {
+    const userId = req.userId;
     const { title, content, category = "General", labels = [], color = "#ffffff", pinned = false } = req.body;
 
     const db = getDbStatus();
     if (db.connected) {
       const note = await Note.create({
+        owner: userId,
         title: title.trim(),
         content: content.trim(),
         category: category.trim() || "General",
@@ -207,6 +174,7 @@ export const createNote = async (req, res, next) => {
     const notes = readFallbackNotes();
     const newNote = {
       _id: "note-" + Date.now() + "-" + Math.random().toString(36).substring(2, 7),
+      owner: String(userId),
       title: title.trim(),
       content: content.trim(),
       category: category.trim() || "General",
@@ -228,9 +196,11 @@ export const createNote = async (req, res, next) => {
 // GET /api/notes/:id
 export const getNoteById = async (req, res, next) => {
   try {
+    const userId = req.userId;
     const db = getDbStatus();
+
     if (db.connected) {
-      const note = await Note.findById(req.params.id);
+      const note = await Note.findOne({ _id: req.params.id, owner: userId });
       if (!note) {
         return res.status(404).json({ success: false, message: `Note not found with id: ${req.params.id}` });
       }
@@ -238,7 +208,7 @@ export const getNoteById = async (req, res, next) => {
     }
 
     const notes = readFallbackNotes();
-    const note = notes.find((n) => n._id === req.params.id);
+    const note = notes.find((n) => n._id === req.params.id && String(n.owner) === String(userId));
     if (!note) {
       return res.status(404).json({ success: false, message: `Note not found with id: ${req.params.id}` });
     }
@@ -251,6 +221,7 @@ export const getNoteById = async (req, res, next) => {
 // PUT /api/notes/:id
 export const updateNote = async (req, res, next) => {
   try {
+    const userId = req.userId;
     const { title, content, category, labels, color, pinned, archived } = req.body;
 
     const db = getDbStatus();
@@ -266,7 +237,7 @@ export const updateNote = async (req, res, next) => {
       if (pinned !== undefined) updateData.pinned = Boolean(pinned);
       if (archived !== undefined) updateData.archived = Boolean(archived);
 
-      const note = await Note.findByIdAndUpdate(req.params.id, updateData, {
+      const note = await Note.findOneAndUpdate({ _id: req.params.id, owner: userId }, updateData, {
         new: true,
         runValidators: true,
       });
@@ -277,7 +248,7 @@ export const updateNote = async (req, res, next) => {
     }
 
     const notes = readFallbackNotes();
-    const index = notes.findIndex((n) => n._id === req.params.id);
+    const index = notes.findIndex((n) => n._id === req.params.id && String(n.owner) === String(userId));
     if (index === -1) {
       return res.status(404).json({ success: false, message: `Note not found with id: ${req.params.id}` });
     }
@@ -305,9 +276,11 @@ export const updateNote = async (req, res, next) => {
 // DELETE /api/notes/:id
 export const deleteNote = async (req, res, next) => {
   try {
+    const userId = req.userId;
     const db = getDbStatus();
+
     if (db.connected) {
-      const note = await Note.findByIdAndDelete(req.params.id);
+      const note = await Note.findOneAndDelete({ _id: req.params.id, owner: userId });
       if (!note) {
         return res.status(404).json({ success: false, message: `Note not found with id: ${req.params.id}` });
       }
@@ -315,7 +288,7 @@ export const deleteNote = async (req, res, next) => {
     }
 
     const notes = readFallbackNotes();
-    const index = notes.findIndex((n) => n._id === req.params.id);
+    const index = notes.findIndex((n) => n._id === req.params.id && String(n.owner) === String(userId));
     if (index === -1) {
       return res.status(404).json({ success: false, message: `Note not found with id: ${req.params.id}` });
     }
@@ -331,10 +304,12 @@ export const deleteNote = async (req, res, next) => {
 // PATCH /api/notes/:id/pin | /unpin | /archive | /restore
 export const toggleFlag = (field, value) => async (req, res, next) => {
   try {
+    const userId = req.userId;
     const db = getDbStatus();
+
     if (db.connected) {
-      const note = await Note.findByIdAndUpdate(
-        req.params.id,
+      const note = await Note.findOneAndUpdate(
+        { _id: req.params.id, owner: userId },
         { [field]: value },
         { new: true }
       );
@@ -345,7 +320,7 @@ export const toggleFlag = (field, value) => async (req, res, next) => {
     }
 
     const notes = readFallbackNotes();
-    const index = notes.findIndex((n) => n._id === req.params.id);
+    const index = notes.findIndex((n) => n._id === req.params.id && String(n.owner) === String(userId));
     if (index === -1) {
       return res.status(404).json({ success: false, message: `Note not found with id: ${req.params.id}` });
     }

@@ -9,11 +9,29 @@ import ConfirmModal from "./components/ConfirmModal";
 import Toast from "./components/Toast";
 import EmptyState from "./components/EmptyState";
 import SkeletonLoader from "./components/SkeletonLoader";
+import AuthScreen from "./components/AuthScreen";
+import RecoveryBanner from "./components/RecoveryBanner";
+import { useAuth } from "./hooks/useAuth";
 import * as api from "./api/notesApi";
-import { Pin, FileText } from "lucide-react";
+import { Pin, FileText, Loader2 } from "lucide-react";
 import "./App.css";
 
 export default function App() {
+  // Authentication Hook
+  const {
+    user,
+    isAuthenticated,
+    recoveryKey,
+    loading: authLoading,
+    error: authError,
+    setError: setAuthError,
+    signup,
+    signin,
+    reset,
+    signout,
+    dismissRecoveryKey,
+  } = useAuth();
+
   // Theme state
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("noteflow_theme") || "light";
@@ -87,16 +105,18 @@ export default function App() {
 
   // Fetch stats summary
   const loadStats = useCallback(async () => {
+    if (!isAuthenticated) return;
     try {
       const data = await api.fetchStats();
       if (data) setStats(data);
     } catch (err) {
       console.error("Failed to load stats:", err);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   // Fetch notes based on current filters
   const loadNotes = useCallback(async () => {
+    if (!isAuthenticated) return;
     setLoading(true);
     try {
       const params = {
@@ -121,24 +141,31 @@ export default function App() {
       setNotes(data || []);
       loadStats();
     } catch (err) {
-      addToast(err.message || "Failed to load notes", "error");
+      if (err.message && !err.message.includes("Session expired")) {
+        addToast(err.message || "Failed to load notes", "error");
+      }
     } finally {
       setLoading(false);
     }
-  }, [activeView, selectedCategory, selectedTag, searchTerm, sortBy, addToast, loadStats]);
+  }, [isAuthenticated, activeView, selectedCategory, selectedTag, searchTerm, sortBy, addToast, loadStats]);
 
-  // Initial load
+  // Initial health check
   useEffect(() => {
     checkHealth();
   }, [checkHealth]);
 
-  // Debounced search / filter reload
+  // Reload notes when user is authenticated or filters change
   useEffect(() => {
-    const timer = setTimeout(() => {
-      loadNotes();
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [loadNotes]);
+    if (isAuthenticated) {
+      const timer = setTimeout(() => {
+        loadNotes();
+      }, 200);
+      return () => clearTimeout(timer);
+    } else {
+      setNotes([]);
+      setStats(null);
+    }
+  }, [isAuthenticated, loadNotes]);
 
   // CRUD Actions
   const handleOpenCreate = () => {
@@ -195,7 +222,6 @@ export default function App() {
         note.pinned ? "Note unpinned." : "Note pinned to top!",
         "success"
       );
-      // Update local state smoothly
       setNotes((prev) =>
         prev.map((n) => (n._id === note._id ? updated : n))
       );
@@ -238,6 +264,46 @@ export default function App() {
     return { pinnedNotes: pinned, otherNotes: others };
   }, [notes, activeView]);
 
+  // Loading screen during initial session verification
+  if (authLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--bg-primary)",
+          gap: "1rem",
+        }}
+      >
+        <Loader2 size={36} className="animate-spin" style={{ color: "var(--primary)" }} />
+        <span style={{ fontSize: "0.95rem", color: "var(--text-muted)", fontWeight: 500 }}>
+          Decrypting session...
+        </span>
+      </div>
+    );
+  }
+
+  // Auth Gate: Render Auth Screen if not signed in
+  if (!isAuthenticated) {
+    return (
+      <>
+        <AuthScreen
+          onSignIn={signin}
+          onSignUp={signup}
+          onReset={reset}
+          error={authError}
+          clearError={() => setAuthError("")}
+          theme={theme}
+          toggleTheme={toggleTheme}
+        />
+        <Toast toasts={toasts} onDismiss={dismissToast} />
+      </>
+    );
+  }
+
   return (
     <div className="app-container">
       {/* Top Navbar */}
@@ -249,7 +315,17 @@ export default function App() {
         toggleTheme={toggleTheme}
         dbStatus={dbStatus}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        user={user}
+        onSignOut={signout}
       />
+
+      {/* One-time Recovery Key Banner after Registration / Reset */}
+      {recoveryKey && (
+        <RecoveryBanner
+          recoveryKey={recoveryKey}
+          onDismiss={dismissRecoveryKey}
+        />
+      )}
 
       <div className="main-wrapper">
         {/* Navigation Sidebar */}
@@ -304,7 +380,7 @@ export default function App() {
             />
           ) : (
             <div>
-              {/* Pinned Notes Section (When in All view and pinned notes exist) */}
+              {/* Pinned Notes Section */}
               {activeView === "all" && pinnedNotes.length > 0 && (
                 <div style={{ marginBottom: "2rem" }}>
                   <div className="notes-section-title">
