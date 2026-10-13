@@ -1,5 +1,21 @@
 [
   {
+    "_id": "note-1791869820199-eetgw",
+    "owner": "user-1791869810134-qs1c6",
+    "title": "Welcome to your Secure Vault, Uday! 🚀",
+    "content": "Your account has been configured with Zero-Knowledge 3-Layer Authentication.\n\nKey features:\n- All passwords are protected using client-side SHA-256 and server-side bcrypt (cost 12)\n- Notes are strictly isolated to your user account\n- Use categories, color tags, pin notes, and archive anytime!",
+    "category": "Personal",
+    "labels": [
+      "welcome",
+      "vault"
+    ],
+    "color": "#fef3c7",
+    "pinned": true,
+    "archived": false,
+    "createdAt": "2026-10-13T05:37:00.199Z",
+    "updatedAt": "2026-10-13T05:37:00.199Z"
+  },
+  {
     "_id": "note-1791869509876-v091v",
     "owner": "user-1791869509869-86it3",
     "title": "Alice Private Vault Note",

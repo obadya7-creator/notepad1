@@ -28,5 +28,15 @@
     "lockUntil": null,
     "createdAt": "2026-10-13T05:31:50.381Z",
     "updatedAt": "2026-10-13T05:31:50.381Z"
+  },
+  {
+    "_id": "user-1791869810134-qs1c6",
+    "username": "uday",
+    "authHash": "$2b$12$ytyS6JgAXtgO8zn7qNSWoev77GzK75onvsipzjCtqd/9jpfTrPVcO",
+    "recoveryHash": "$2b$12$I272mJPZLxYNGtSvaB3hHOaY3KzY5CJiQ/5QnjhMQw5304.RFwOTq",
+    "failedLoginAttempts": 0,
+    "lockUntil": null,
+    "createdAt": "2026-10-13T05:36:50.134Z",
+    "updatedAt": "2026-10-13T05:36:50.135Z"
   }
 ]

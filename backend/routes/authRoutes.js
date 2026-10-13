@@ -10,10 +10,10 @@ import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
 
-// Rate limiter: 10 attempts per 15 minutes per IP
+// Rate limiter: 10 attempts per 15 min in production, generous in development
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: process.env.NODE_ENV === "production" ? 10 : 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
