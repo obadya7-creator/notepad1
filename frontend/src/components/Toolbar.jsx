@@ -1,5 +1,5 @@
-import React from "react";
-import { LayoutGrid, List, X, ArrowUpDown } from "lucide-react";
+import React, { useState } from "react";
+import { LayoutGrid, List, X, ArrowUpDown, Download, FileJson, FileText } from "lucide-react";
 
 export default function Toolbar({
   activeView,
@@ -14,7 +14,9 @@ export default function Toolbar({
   viewMode,
   setViewMode,
   noteCount,
+  onExport,
 }) {
+  const [exportOpen, setExportOpen] = useState(false);
   const getTitle = () => {
     if (activeView === "pinned") return "Pinned Notes";
     if (activeView === "archived") return "Archived Notes";
@@ -72,6 +74,84 @@ export default function Toolbar({
               <List size={17} />
             </button>
           </div>
+
+          {/* Export Notes Dropdown */}
+          {onExport && (
+            <div style={{ position: "relative" }}>
+              <button
+                className="btn-secondary"
+                style={{ padding: "0.45rem 0.75rem", fontSize: "0.85rem", gap: "0.4rem" }}
+                onClick={() => setExportOpen(!exportOpen)}
+                title="Export Notes Vault"
+              >
+                <Download size={15} />
+                <span>Export</span>
+              </button>
+
+              {exportOpen && (
+                <>
+                  <div
+                    style={{ position: "fixed", inset: 0, zIndex: 40 }}
+                    onClick={() => setExportOpen(false)}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      top: "calc(100% + 6px)",
+                      background: "var(--bg-secondary)",
+                      border: "1px solid var(--border-color)",
+                      borderRadius: "var(--radius-md)",
+                      boxShadow: "var(--shadow-lg)",
+                      zIndex: 50,
+                      minWidth: "170px",
+                      padding: "0.4rem",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.25rem",
+                    }}
+                  >
+                    <button
+                      className="btn-secondary"
+                      style={{
+                        justifyContent: "flex-start",
+                        border: "none",
+                        padding: "0.5rem 0.75rem",
+                        fontSize: "0.82rem",
+                        gap: "0.5rem",
+                        background: "transparent",
+                      }}
+                      onClick={() => {
+                        setExportOpen(false);
+                        onExport("json");
+                      }}
+                    >
+                      <FileJson size={15} style={{ color: "var(--primary)" }} />
+                      <span>Export as JSON</span>
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      style={{
+                        justifyContent: "flex-start",
+                        border: "none",
+                        padding: "0.5rem 0.75rem",
+                        fontSize: "0.82rem",
+                        gap: "0.5rem",
+                        background: "transparent",
+                      }}
+                      onClick={() => {
+                        setExportOpen(false);
+                        onExport("markdown");
+                      }}
+                    >
+                      <FileText size={15} style={{ color: "#10b981" }} />
+                      <span>Export as Markdown</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

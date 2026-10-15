@@ -39,6 +39,7 @@ export default function App() {
 
   // Layout states
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [viewMode, setViewMode] = useState(() => {
     return localStorage.getItem("noteflow_view") || "grid";
   });
@@ -49,6 +50,32 @@ export default function App() {
   const [selectedTag, setSelectedTag] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("latest");
+
+  const toggleSidebar = useCallback(() => {
+    if (window.innerWidth <= 900) {
+      setSidebarOpen((prev) => !prev);
+    } else {
+      setSidebarCollapsed((prev) => !prev);
+    }
+  }, []);
+
+  const handleSelectView = useCallback((view) => {
+    setActiveView(view);
+    setSelectedCategory("");
+    setSelectedTag("");
+  }, []);
+
+  const handleSelectCategory = useCallback((category) => {
+    setSelectedCategory(category === "All" ? "" : category);
+    setSelectedTag("");
+    setActiveView("all");
+  }, []);
+
+  const handleSelectTag = useCallback((tag) => {
+    setSelectedTag((prev) => (prev === tag ? "" : tag));
+    setSelectedCategory("");
+    setActiveView("all");
+  }, []);
 
   // Data states
   const [notes, setNotes] = useState([]);
@@ -251,6 +278,42 @@ export default function App() {
     }
   };
 
+  const handleExportNotes = (format = "json") => {
+    if (!notes || notes.length === 0) {
+      addToast("No notes found to export.", "info");
+      return;
+    }
+    const timestamp = new Date().toISOString().split("T")[0];
+    if (format === "json") {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(notes, null, 2));
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `noteflow_backup_${timestamp}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      addToast("Exported notes to JSON successfully!", "success");
+    } else if (format === "markdown") {
+      let mdContent = `# NoteFlow Vault Export - ${timestamp}\n\n`;
+      notes.forEach((n, idx) => {
+        mdContent += `## ${idx + 1}. ${n.title}\n`;
+        mdContent += `*Category: ${n.category || "General"} | Updated: ${new Date(n.updatedAt || n.createdAt).toLocaleString()}*\n\n`;
+        if (n.labels && n.labels.length > 0) {
+          mdContent += `Tags: ${n.labels.map((l) => `#${l}`).join(" ")}\n\n`;
+        }
+        mdContent += `${n.content}\n\n---\n\n`;
+      });
+      const dataStr = "data:text/markdown;charset=utf-8," + encodeURIComponent(mdContent);
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `noteflow_notes_${timestamp}.md`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      addToast("Exported notes to Markdown successfully!", "success");
+    }
+  };
+
   // Split notes into Pinned and Others when in "All Notes" view
   const { pinnedNotes, otherNotes } = useMemo(() => {
     if (activeView === "pinned") {
@@ -314,7 +377,7 @@ export default function App() {
         theme={theme}
         toggleTheme={toggleTheme}
         dbStatus={dbStatus}
-        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        onToggleSidebar={toggleSidebar}
         user={user}
         onSignOut={signout}
       />
@@ -331,17 +394,18 @@ export default function App() {
         {/* Navigation Sidebar */}
         <Sidebar
           activeView={activeView}
-          setActiveView={(view) => {
-            setActiveView(view);
-            setSelectedCategory("");
-            setSelectedTag("");
-          }}
+          onSelectView={handleSelectView}
+          setActiveView={handleSelectView}
           selectedCategory={selectedCategory}
-          setSelectedCategory={setSelectedCategory}
+          onSelectCategory={handleSelectCategory}
+          setSelectedCategory={handleSelectCategory}
           selectedTag={selectedTag}
-          setSelectedTag={setSelectedTag}
+          onSelectTag={handleSelectTag}
+          setSelectedTag={handleSelectTag}
           stats={stats}
+          notes={notes}
           isOpen={sidebarOpen}
+          isCollapsed={sidebarCollapsed}
           onClose={() => setSidebarOpen(false)}
         />
 
@@ -360,6 +424,7 @@ export default function App() {
             viewMode={viewMode}
             setViewMode={setViewMode}
             noteCount={notes.length}
+            onExport={handleExportNotes}
           />
 
           {loading ? (

@@ -1,6 +1,10 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import compression from "compression";
+import mongoSanitize from "express-mongo-sanitize";
+import hpp from "hpp";
+import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 import { connectDB, getDbStatus } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -24,7 +28,10 @@ const HEALTH_ENDPOINT = process.env.HEALTH_ENDPOINT || "/api/health";
 const AUTH_ENDPOINT = process.env.AUTH_ENDPOINT || "/api/auth";
 const NOTES_ENDPOINT = process.env.NOTES_ENDPOINT || "/api/notes";
 
-// Security Headers with Helmet
+// Disable fingerprinting header
+app.disable("x-powered-by");
+
+// Enhanced Security Headers with Helmet
 app.use(
   helmet({
     contentSecurityPolicy: false, // Let frontend dev server manage CSP in dev
@@ -32,15 +39,65 @@ app.use(
   })
 );
 
-// Enable CORS with JSON body parser (limited to 1MB)
+// Payload compression
+app.use(compression());
+
+// Parse JSON body with safe size limit
+app.use(express.json({ limit: "1mb" }));
+
+// Sanitize against NoSQL injection (strips keys starting with $ or containing .)
+app.use(mongoSanitize());
+
+// Protect against HTTP Parameter Pollution
+app.use(hpp());
+
+// Configurable CORS protection
+const defaultAllowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+];
+
+const envOrigins = (process.env.CORS_ORIGIN || process.env.CLIENT_URL || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const allowedOrigins = envOrigins.length > 0 ? envOrigins : defaultAllowedOrigins;
+
 app.use(
   cors({
-    origin: "*",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or same-origin server requests)
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.includes(origin) ||
+        process.env.NODE_ENV !== "production" ||
+        allowedOrigins.includes("*")
+      ) {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS policy: Access blocked from this Origin."));
+    },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-app.use(express.json({ limit: "1mb" }));
+
+// General API rate limiter (protects against DoS / brute force)
+const generalApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === "production" ? 300 : 3000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many requests from this IP. Please try again after 15 minutes.",
+  },
+});
+app.use("/api", generalApiLimiter);
 
 // Request logging & saving to MongoDB Compass (user_logs collection)
 app.use((req, res, next) => {

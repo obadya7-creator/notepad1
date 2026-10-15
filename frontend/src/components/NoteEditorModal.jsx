@@ -27,9 +27,15 @@ export default function NoteEditorModal({ note, onSave, onClose }) {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const formRef = React.useRef(null);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") onClose();
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        formRef.current?.requestSubmit();
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -105,7 +111,7 @@ export default function NoteEditorModal({ note, onSave, onClose }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form ref={formRef} onSubmit={handleSubmit}>
           <div className="modal-body">
             {/* Title Field */}
             <div className="form-group">
@@ -274,32 +280,37 @@ export default function NoteEditorModal({ note, onSave, onClose }) {
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={onClose}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={isSubmitting}
-              style={{ minWidth: "110px", justifyContent: "center" }}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  <span>Saving...</span>
-                </>
-              ) : note ? (
-                "Update Note"
-              ) : (
-                "Create Note"
-              )}
-            </button>
+          <div className="modal-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "0.78rem", color: "var(--text-light)" }}>
+              Tip: Press <kbd style={{ padding: "0.15rem 0.35rem", borderRadius: "4px", background: "var(--bg-primary)", border: "1px solid var(--border-color)", fontSize: "0.75rem" }}>⌘ / Ctrl + Enter</kbd> to save
+            </span>
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={onClose}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={isSubmitting}
+                style={{ minWidth: "110px", justifyContent: "center" }}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : note ? (
+                  "Update Note"
+                ) : (
+                  "Create Note"
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>

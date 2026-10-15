@@ -21,3 +21,7 @@ yarn-error.log*
 # Editor directories
 .vscode/
 .idea/
+
+# Local fallback data (protect user credentials, notes, and activity logs)
+backend/data/*.json
+!backend/data/.gitkeep

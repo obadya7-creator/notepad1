@@ -1,10 +1,9 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   FileText,
   Pin,
   Archive,
   Tag,
-  Folder,
   Server,
 } from "lucide-react";
 
@@ -20,75 +19,128 @@ const CATEGORY_COLORS = {
 export default function Sidebar({
   activeView,
   setActiveView,
+  onSelectView,
   selectedCategory,
   setSelectedCategory,
+  onSelectCategory,
   selectedTag,
   setSelectedTag,
+  onSelectTag,
   stats,
-  isOpen,
+  notes = [],
+  isOpen = false,
+  isCollapsed = false,
   onClose,
 }) {
-  const categories = [
-    "All",
-    "Work",
-    "Personal",
-    "Ideas",
-    "Study",
-    "Tasks",
-    ...(stats?.categories?.filter(
-      (c) => !["All", "Work", "Personal", "Ideas", "Study", "Tasks"].includes(c)
-    ) || []),
-  ];
+  const handleViewClick = (view) => {
+    if (onSelectView) {
+      onSelectView(view);
+    } else if (setActiveView) {
+      setActiveView(view);
+      if (setSelectedCategory) setSelectedCategory("");
+      if (setSelectedTag) setSelectedTag("");
+    }
+    if (window.innerWidth <= 900 && onClose) onClose();
+  };
+
+  const handleCategoryClick = (cat) => {
+    const target = cat === "All" ? "" : cat;
+    if (onSelectCategory) {
+      onSelectCategory(target);
+    } else {
+      if (setSelectedCategory) setSelectedCategory(target);
+      if (setActiveView) setActiveView("all");
+      if (setSelectedTag) setSelectedTag("");
+    }
+    if (window.innerWidth <= 900 && onClose) onClose();
+  };
+
+  const handleTagClick = (lbl) => {
+    const target = selectedTag === lbl ? "" : lbl;
+    if (onSelectTag) {
+      onSelectTag(target);
+    } else {
+      if (setSelectedTag) setSelectedTag(target);
+      if (setActiveView) setActiveView("all");
+      if (setSelectedCategory) setSelectedCategory("");
+    }
+    if (window.innerWidth <= 900 && onClose) onClose();
+  };
+
+  // Distinct category list
+  const categories = useMemo(() => {
+    const base = ["All", "Work", "Personal", "Ideas", "Study", "Tasks", "General"];
+    const dynamic = (stats?.categories || []).filter((c) => !base.includes(c));
+    return [...base, ...dynamic];
+  }, [stats?.categories]);
+
+  // Count active notes per category
+  const categoryCounts = useMemo(() => {
+    const map = {};
+    if (Array.isArray(notes)) {
+      notes.forEach((n) => {
+        if (!n.archived) {
+          const c = n.category || "General";
+          map[c] = (map[c] || 0) + 1;
+        }
+      });
+    }
+    return map;
+  }, [notes]);
 
   return (
     <>
-      {isOpen && <div className="sidebar-backdrop" onClick={onClose} />}
+      {isOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
 
-      <aside className={`sidebar ${isOpen ? "open" : ""}`}>
-        {/* Navigation Section */}
+      <aside className={`sidebar ${isOpen ? "open" : ""} ${isCollapsed ? "collapsed" : ""}`}>
+        {/* Navigation Views Section */}
         <div>
           <div className="nav-section-title">Views</div>
           <nav className="nav-list">
             <button
-              className={`nav-item ${activeView === "all" ? "active" : ""}`}
-              onClick={() => {
-                setActiveView("all");
-                if (window.innerWidth < 900) onClose();
-              }}
+              type="button"
+              className={`nav-item ${
+                activeView === "all" && !selectedCategory && !selectedTag
+                  ? "active"
+                  : ""
+              }`}
+              onClick={() => handleViewClick("all")}
             >
               <div className="nav-item-left">
                 <FileText size={18} />
                 <span>All Notes</span>
               </div>
-              <span className="badge">{stats?.active ?? 0}</span>
+              <span className="badge">{stats?.active ?? notes?.filter((n) => !n.archived)?.length ?? 0}</span>
             </button>
 
             <button
+              type="button"
               className={`nav-item ${activeView === "pinned" ? "active" : ""}`}
-              onClick={() => {
-                setActiveView("pinned");
-                if (window.innerWidth < 900) onClose();
-              }}
+              onClick={() => handleViewClick("pinned")}
             >
               <div className="nav-item-left">
                 <Pin size={18} />
                 <span>Pinned</span>
               </div>
-              <span className="badge">{stats?.pinned ?? 0}</span>
+              <span className="badge">{stats?.pinned ?? notes?.filter((n) => n.pinned && !n.archived)?.length ?? 0}</span>
             </button>
 
             <button
+              type="button"
               className={`nav-item ${activeView === "archived" ? "active" : ""}`}
-              onClick={() => {
-                setActiveView("archived");
-                if (window.innerWidth < 900) onClose();
-              }}
+              onClick={() => handleViewClick("archived")}
             >
               <div className="nav-item-left">
                 <Archive size={18} />
                 <span>Archived</span>
               </div>
-              <span className="badge">{stats?.archived ?? 0}</span>
+              <span className="badge">{stats?.archived ?? notes?.filter((n) => n.archived)?.length ?? 0}</span>
             </button>
           </nav>
         </div>
@@ -99,18 +151,20 @@ export default function Sidebar({
           <div className="nav-list">
             {categories.map((cat) => {
               const isSelected =
-                (cat === "All" && !selectedCategory) ||
-                selectedCategory === cat;
+                cat === "All"
+                  ? !selectedCategory && !selectedTag && activeView === "all"
+                  : selectedCategory === cat;
               const dotColor = CATEGORY_COLORS[cat] || "#6366f1";
+              const count = cat === "All"
+                ? (stats?.active ?? notes?.filter((n) => !n.archived)?.length ?? 0)
+                : (categoryCounts[cat] || 0);
 
               return (
                 <button
+                  type="button"
                   key={cat}
                   className={`category-item ${isSelected ? "active" : ""}`}
-                  onClick={() => {
-                    setSelectedCategory(cat === "All" ? "" : cat);
-                    if (window.innerWidth < 900) onClose();
-                  }}
+                  onClick={() => handleCategoryClick(cat)}
                 >
                   <div style={{ display: "flex", alignItems: "center" }}>
                     <span
@@ -119,6 +173,7 @@ export default function Sidebar({
                     />
                     <span>{cat}</span>
                   </div>
+                  {count > 0 && <span className="badge">{count}</span>}
                 </button>
               );
             })}
@@ -136,12 +191,10 @@ export default function Sidebar({
             <div className="tags-cloud">
               {stats.labels.map((lbl) => (
                 <button
+                  type="button"
                   key={lbl}
                   className={`tag-pill ${selectedTag === lbl ? "active" : ""}`}
-                  onClick={() => {
-                    setSelectedTag(selectedTag === lbl ? "" : lbl);
-                    if (window.innerWidth < 900) onClose();
-                  }}
+                  onClick={() => handleTagClick(lbl)}
                 >
                   #{lbl}
                 </button>
@@ -172,7 +225,7 @@ export default function Sidebar({
             <div>
               Storage:{" "}
               <strong style={{ color: "var(--text-main)" }}>
-                {stats?.storageMode === "mongodb" ? "MongoDB Atlas / Local" : "Persistent File"}
+                {stats?.storageMode === "mongodb" ? "MongoDB Atlas" : "Local File Vault"}
               </strong>
             </div>
           </div>
