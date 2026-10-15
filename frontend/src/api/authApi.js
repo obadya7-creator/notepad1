@@ -1,4 +1,5 @@
 const BASE_URL = import.meta.env.VITE_AUTH_ENDPOINT || "/api/auth";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const TOKEN_KEY = "noteflow_token";
 
 export function getToken() {
@@ -28,7 +29,7 @@ export async function register(username, authHash) {
     if (res.status === 404) {
       throw new Error(
         data.message ||
-          "Registration endpoint not found (404). Please ensure the backend is running on http://localhost:5000 and restart your frontend dev server."
+          `Registration endpoint not found (404). Please ensure the backend is running on ${API_URL} and restart your frontend dev server.`
       );
     }
     throw new Error(data.message || "Registration failed");
@@ -47,7 +48,7 @@ export async function login(username, authHash) {
     if (res.status === 404) {
       throw new Error(
         data.message ||
-          "Authentication endpoint not found (404). Please ensure the backend is running on http://localhost:5000 and restart your frontend dev server."
+          `Authentication endpoint not found (404). Please ensure the backend is running on ${API_URL} and restart your frontend dev server.`
       );
     }
     throw new Error(data.message || "Login failed");
@@ -85,7 +86,7 @@ export async function resetPassword(username, recoveryKey, newAuthHash) {
     if (res.status === 404) {
       throw new Error(
         data.message ||
-          "Password reset endpoint not found (404). Please ensure the backend is running on http://localhost:5000 and restart your frontend dev server."
+          `Password reset endpoint not found (404). Please ensure the backend is running on ${API_URL} and restart your frontend dev server.`
       );
     }
     throw new Error(data.message || "Password reset failed");

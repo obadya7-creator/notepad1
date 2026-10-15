@@ -19,7 +19,8 @@ export const syncFallbackToDb = async () => {
     const userMap = {}; // old fallback ID -> new Mongo ObjectId
 
     if (fs.existsSync(usersFile)) {
-      const fallbackUsers = JSON.parse(fs.readFileSync(usersFile, "utf8") || "[]");
+      const rawUsers = fs.readFileSync(usersFile, "utf8").trim();
+      const fallbackUsers = rawUsers ? JSON.parse(rawUsers) : [];
       for (const fu of fallbackUsers) {
         if (!fu.username) continue;
         const cleanUser = fu.username.toLowerCase();
@@ -41,7 +42,8 @@ export const syncFallbackToDb = async () => {
     }
 
     if (fs.existsSync(notesFile)) {
-      const fallbackNotes = JSON.parse(fs.readFileSync(notesFile, "utf8") || "[]");
+      const rawNotes = fs.readFileSync(notesFile, "utf8").trim();
+      const fallbackNotes = rawNotes ? JSON.parse(rawNotes) : [];
       for (const fn of fallbackNotes) {
         if (!fn.title || !fn.content) continue;
         const targetOwner = userMap[fn.owner] || fn.owner;

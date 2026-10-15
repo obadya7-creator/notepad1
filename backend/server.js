@@ -18,6 +18,8 @@ if (!process.env.JWT_SECRET) {
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || "localhost";
+const SERVER_URL = process.env.SERVER_URL || process.env.BASE_URL || `http://${HOST}:${PORT}`;
 const HEALTH_ENDPOINT = process.env.HEALTH_ENDPOINT || "/api/health";
 const AUTH_ENDPOINT = process.env.AUTH_ENDPOINT || "/api/auth";
 const NOTES_ENDPOINT = process.env.NOTES_ENDPOINT || "/api/notes";
@@ -98,10 +100,10 @@ app.use(errorHandler);
 
 // Start server
 const server = app.listen(PORT, async () => {
-  console.log(`🚀 Notes API Server running at http://localhost:${PORT}`);
-  console.log(`📡 Health Check: http://localhost:${PORT}${HEALTH_ENDPOINT}`);
-  console.log(`🔐 Auth Endpoints: http://localhost:${PORT}${AUTH_ENDPOINT}`);
-  console.log(`📝 Notes Endpoint: http://localhost:${PORT}${NOTES_ENDPOINT}`);
+  console.log(`🚀 Notes API Server running at ${SERVER_URL}`);
+  console.log(`📡 Health Check: ${SERVER_URL}${HEALTH_ENDPOINT}`);
+  console.log(`🔐 Auth Endpoints: ${SERVER_URL}${AUTH_ENDPOINT}`);
+  console.log(`📝 Notes Endpoint: ${SERVER_URL}${NOTES_ENDPOINT}`);
   await connectDB();
 });
 
