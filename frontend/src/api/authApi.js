@@ -1,5 +1,18 @@
-const BASE_URL = import.meta.env.VITE_AUTH_ENDPOINT || "/api/auth";
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const RAW_API_URL = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
+const AUTH_ENDPOINT = (import.meta.env.VITE_AUTH_ENDPOINT || "/api/auth").trim();
+
+export const API_URL = RAW_API_URL || "http://localhost:5000";
+
+// Build absolute base URL for auth requests:
+// - If AUTH_ENDPOINT is already absolute (starts with http:// or https://), use it
+// - If RAW_API_URL is provided (e.g. hosted backend on Render), prefix it
+// - Otherwise fallback to relative path (uses local Vite proxy)
+export const BASE_URL = (AUTH_ENDPOINT.startsWith("http://") || AUTH_ENDPOINT.startsWith("https://"))
+  ? AUTH_ENDPOINT.replace(/\/+$/, "")
+  : RAW_API_URL
+  ? `${RAW_API_URL}${AUTH_ENDPOINT.startsWith("/") ? AUTH_ENDPOINT : `/${AUTH_ENDPOINT}`}`
+  : AUTH_ENDPOINT;
+
 const TOKEN_KEY = "noteflow_token";
 
 export function getToken() {
@@ -29,7 +42,7 @@ export async function register(username, authHash) {
     if (res.status === 404) {
       throw new Error(
         data.message ||
-          `Registration endpoint not found (404). Please ensure the backend is running on ${API_URL} and restart your frontend dev server.`
+          `Registration endpoint not found (404) at ${BASE_URL}/register. Please ensure the backend is running and accessible.`
       );
     }
     throw new Error(data.message || "Registration failed");
@@ -48,7 +61,7 @@ export async function login(username, authHash) {
     if (res.status === 404) {
       throw new Error(
         data.message ||
-          `Authentication endpoint not found (404). Please ensure the backend is running on ${API_URL} and restart your frontend dev server.`
+          `Authentication endpoint not found (404) at ${BASE_URL}/login. Please ensure the backend is running and accessible.`
       );
     }
     throw new Error(data.message || "Login failed");
@@ -86,7 +99,7 @@ export async function resetPassword(username, recoveryKey, newAuthHash) {
     if (res.status === 404) {
       throw new Error(
         data.message ||
-          `Password reset endpoint not found (404). Please ensure the backend is running on ${API_URL} and restart your frontend dev server.`
+          `Password reset endpoint not found (404) at ${BASE_URL}/reset. Please ensure the backend is running and accessible.`
       );
     }
     throw new Error(data.message || "Password reset failed");

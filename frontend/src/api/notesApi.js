@@ -1,7 +1,20 @@
 import { getToken, clearToken } from "./authApi";
 
-const NOTES_BASE = import.meta.env.VITE_NOTES_ENDPOINT || "/api/notes";
-const HEALTH_BASE = import.meta.env.VITE_HEALTH_ENDPOINT || "/api/health";
+const RAW_API_URL = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
+const NOTES_ENDPOINT = (import.meta.env.VITE_NOTES_ENDPOINT || "/api/notes").trim();
+const HEALTH_ENDPOINT = (import.meta.env.VITE_HEALTH_ENDPOINT || "/api/health").trim();
+
+const NOTES_BASE = (NOTES_ENDPOINT.startsWith("http://") || NOTES_ENDPOINT.startsWith("https://"))
+  ? NOTES_ENDPOINT.replace(/\/+$/, "")
+  : RAW_API_URL
+  ? `${RAW_API_URL}${NOTES_ENDPOINT.startsWith("/") ? NOTES_ENDPOINT : `/${NOTES_ENDPOINT}`}`
+  : NOTES_ENDPOINT;
+
+const HEALTH_BASE = (HEALTH_ENDPOINT.startsWith("http://") || HEALTH_ENDPOINT.startsWith("https://"))
+  ? HEALTH_ENDPOINT.replace(/\/+$/, "")
+  : RAW_API_URL
+  ? `${RAW_API_URL}${HEALTH_ENDPOINT.startsWith("/") ? HEALTH_ENDPOINT : `/${HEALTH_ENDPOINT}`}`
+  : HEALTH_ENDPOINT;
 
 function authHeaders(extraHeaders = {}) {
   const token = getToken();
