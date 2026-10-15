@@ -23,8 +23,14 @@ export async function register(username, authHash) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, authHash }),
   });
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error(
+        data.message ||
+          "Registration endpoint not found (404). Please ensure the backend is running on http://localhost:5000 and restart your frontend dev server."
+      );
+    }
     throw new Error(data.message || "Registration failed");
   }
   return data;
@@ -36,8 +42,14 @@ export async function login(username, authHash) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, authHash }),
   });
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error(
+        data.message ||
+          "Authentication endpoint not found (404). Please ensure the backend is running on http://localhost:5000 and restart your frontend dev server."
+      );
+    }
     throw new Error(data.message || "Login failed");
   }
   return data;
@@ -47,15 +59,19 @@ export async function getMe() {
   const token = getToken();
   if (!token) return null;
 
-  const res = await fetch(`${BASE_URL}/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  try {
+    const res = await fetch(`${BASE_URL}/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-  if (!res.ok) {
-    clearToken();
+    if (!res.ok) {
+      clearToken();
+      return null;
+    }
+    return res.json().catch(() => null);
+  } catch (err) {
     return null;
   }
-  return res.json();
 }
 
 export async function resetPassword(username, recoveryKey, newAuthHash) {
@@ -64,8 +80,14 @@ export async function resetPassword(username, recoveryKey, newAuthHash) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, recoveryKey, newAuthHash }),
   });
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error(
+        data.message ||
+          "Password reset endpoint not found (404). Please ensure the backend is running on http://localhost:5000 and restart your frontend dev server."
+      );
+    }
     throw new Error(data.message || "Password reset failed");
   }
   return data;
