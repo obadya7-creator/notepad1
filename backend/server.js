@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
-import jwt from "jsonwebtoken";
 import { connectDB, getDbStatus } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import notesRoutes from "./routes/notes.routes.js";
@@ -40,20 +39,6 @@ app.use(
   })
 );
 app.use(express.json({ limit: "1mb" }));
-
-// Pre-extract user context from Bearer token so username & userId are captured for all logs
-app.use((req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    try {
-      const token = authHeader.split(" ")[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.userId = decoded.userId;
-      req.username = decoded.username;
-    } catch (e) {}
-  }
-  next();
-});
 
 // Request logging & saving to MongoDB Compass (user_logs collection)
 app.use((req, res, next) => {

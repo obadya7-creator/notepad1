@@ -1,6 +1,7 @@
 import { getToken, clearToken } from "./authApi";
 
-const BASE_URL = "/api";
+const NOTES_BASE = import.meta.env.VITE_NOTES_ENDPOINT || "/api/notes";
+const HEALTH_BASE = import.meta.env.VITE_HEALTH_ENDPOINT || "/api/health";
 
 function authHeaders(extraHeaders = {}) {
   const token = getToken();
@@ -32,14 +33,14 @@ export async function fetchNotes(params = {}) {
   if (params.archived !== undefined) query.set("archived", String(params.archived));
   if (params.pinned !== undefined) query.set("pinned", String(params.pinned));
 
-  const res = await fetch(`${BASE_URL}/notes?${query.toString()}`, {
+  const res = await fetch(`${NOTES_BASE}?${query.toString()}`, {
     headers: authHeaders(),
   });
   return handleResponse(res, "Failed to fetch notes");
 }
 
 export async function fetchStats() {
-  const res = await fetch(`${BASE_URL}/notes/meta/stats`, {
+  const res = await fetch(`${NOTES_BASE}/meta/stats`, {
     headers: authHeaders(),
   });
   if (res.status === 401) return null;
@@ -48,13 +49,13 @@ export async function fetchStats() {
 }
 
 export async function fetchHealth() {
-  const res = await fetch(`${BASE_URL}/health`);
+  const res = await fetch(HEALTH_BASE);
   if (!res.ok) return null;
   return res.json();
 }
 
 export async function createNote(data) {
-  const res = await fetch(`${BASE_URL}/notes`, {
+  const res = await fetch(NOTES_BASE, {
     method: "POST",
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(data),
@@ -63,7 +64,7 @@ export async function createNote(data) {
 }
 
 export async function updateNote(id, data) {
-  const res = await fetch(`${BASE_URL}/notes/${id}`, {
+  const res = await fetch(`${NOTES_BASE}/${id}`, {
     method: "PUT",
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(data),
@@ -72,7 +73,7 @@ export async function updateNote(id, data) {
 }
 
 export async function deleteNote(id) {
-  const res = await fetch(`${BASE_URL}/notes/${id}`, {
+  const res = await fetch(`${NOTES_BASE}/${id}`, {
     method: "DELETE",
     headers: authHeaders(),
   });
@@ -81,7 +82,7 @@ export async function deleteNote(id) {
 
 export async function patchNoteAction(id, action) {
   // action: 'pin' | 'unpin' | 'archive' | 'restore'
-  const res = await fetch(`${BASE_URL}/notes/${id}/${action}`, {
+  const res = await fetch(`${NOTES_BASE}/${id}/${action}`, {
     method: "PATCH",
     headers: authHeaders(),
   });

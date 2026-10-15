@@ -1,4 +1,4 @@
-const BASE_URL = "/api/auth";
+const BASE_URL = import.meta.env.VITE_AUTH_ENDPOINT || "/api/auth";
 const TOKEN_KEY = "noteflow_token";
 
 export function getToken() {
@@ -17,31 +17,17 @@ export function clearToken() {
   sessionStorage.removeItem(TOKEN_KEY);
 }
 
-async function parseAuthResponse(res, defaultErrorMessage) {
-  let data;
-  try {
-    data = await res.json();
-  } catch {
-    if (!res.ok) {
-      throw new Error(
-        `Server communication error (${res.status}). Please check that the backend is running on port 5000.`
-      );
-    }
-    throw new Error(defaultErrorMessage);
-  }
-  if (!res.ok) {
-    throw new Error(data?.message || defaultErrorMessage);
-  }
-  return data;
-}
-
 export async function register(username, authHash) {
   const res = await fetch(`${BASE_URL}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, authHash }),
   });
-  return parseAuthResponse(res, "Registration failed");
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Registration failed");
+  }
+  return data;
 }
 
 export async function login(username, authHash) {
@@ -50,26 +36,26 @@ export async function login(username, authHash) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, authHash }),
   });
-  return parseAuthResponse(res, "Login failed");
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Login failed");
+  }
+  return data;
 }
 
 export async function getMe() {
   const token = getToken();
   if (!token) return null;
 
-  try {
-    const res = await fetch(`${BASE_URL}/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+  const res = await fetch(`${BASE_URL}/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 
-    if (!res.ok) {
-      clearToken();
-      return null;
-    }
-    return await res.json();
-  } catch {
+  if (!res.ok) {
+    clearToken();
     return null;
   }
+  return res.json();
 }
 
 export async function resetPassword(username, recoveryKey, newAuthHash) {
@@ -78,6 +64,9 @@ export async function resetPassword(username, recoveryKey, newAuthHash) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, recoveryKey, newAuthHash }),
   });
-  return parseAuthResponse(res, "Password reset failed");
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Password reset failed");
+  }
+  return data;
 }
-
