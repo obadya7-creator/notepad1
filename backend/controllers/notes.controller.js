@@ -58,11 +58,15 @@ export const getNotes = async (req, res, next) => {
         ];
       }
 
-      const sortMap = { latest: "-updatedAt", oldest: "updatedAt", title: "title" };
-      const notes = await Note.find(filter).sort([
-        ["pinned", -1],
-        [sortMap[sort] || "-updatedAt"],
-      ]);
+      const sortMap = {
+        latest: { updatedAt: -1 },
+        oldest: { createdAt: 1 },
+        title: { title: 1 },
+      };
+      const notes = await Note.find(filter).sort({
+        pinned: -1,
+        ...(sortMap[sort] || { updatedAt: -1 }),
+      });
       return res.json(notes);
     }
 
