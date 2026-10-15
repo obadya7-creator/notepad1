@@ -1,5 +1,18 @@
 [
   {
+    "_id": "note-1791870034839-q5dzu",
+    "owner": "user-1791869985123-5hc08",
+    "title": "Generate the code",
+    "content": "I don't know 🤷‍♀️ but if you",
+    "category": "General",
+    "labels": [],
+    "color": "#10b981",
+    "pinned": false,
+    "archived": false,
+    "createdAt": "2026-10-13T05:40:34.839Z",
+    "updatedAt": "2026-10-13T05:40:34.839Z"
+  },
+  {
     "_id": "note-1791869820199-eetgw",
     "owner": "user-1791869810134-qs1c6",
     "title": "Welcome to your Secure Vault, Uday! 🚀",

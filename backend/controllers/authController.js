@@ -89,6 +89,8 @@ export const register = async (req, res, next) => {
         lockUntil: null,
       });
 
+      req.userId = user._id;
+      req.username = user.username;
       const token = generateToken(user._id, user.username);
       return res.status(201).json({
         success: true,
@@ -117,6 +119,8 @@ export const register = async (req, res, next) => {
     users.push(newUser);
     writeFallbackUsers(users);
 
+    req.userId = newUser._id;
+    req.username = newUser.username;
     const token = generateToken(newUser._id, newUser.username);
     return res.status(201).json({
       success: true,
@@ -212,6 +216,8 @@ export const login = async (req, res, next) => {
       }
     }
 
+    req.userId = user._id;
+    req.username = user.username;
     const token = generateToken(user._id, user.username);
     return res.json({
       success: true,

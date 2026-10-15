@@ -2,10 +2,12 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
 import { connectDB, getDbStatus } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import notesRoutes from "./routes/notes.routes.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
+import { recordUserLog, resolveActionName } from "./services/loggerService.js";
 
 dotenv.config();
 
@@ -17,6 +19,9 @@ if (!process.env.JWT_SECRET) {
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const HEALTH_ENDPOINT = process.env.HEALTH_ENDPOINT || "/api/health";
+const AUTH_ENDPOINT = process.env.AUTH_ENDPOINT || "/api/auth";
+const NOTES_ENDPOINT = process.env.NOTES_ENDPOINT || "/api/notes";
 
 // Security Headers with Helmet
 app.use(
@@ -36,18 +41,57 @@ app.use(
 );
 app.use(express.json({ limit: "1mb" }));
 
-// Request logging
+// Pre-extract user context from Bearer token so username & userId are captured for all logs
+app.use((req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    try {
+      const token = authHeader.split(" ")[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.userId = decoded.userId;
+      req.username = decoded.username;
+    } catch (e) {}
+  }
+  next();
+});
+
+// Request logging & saving to MongoDB Compass (user_logs collection)
 app.use((req, res, next) => {
   const start = Date.now();
   res.on("finish", () => {
     const duration = Date.now() - start;
     console.log(`[${req.method}] ${req.originalUrl} -> ${res.statusCode} (${duration}ms)`);
+
+    // Record user activity in MongoDB (skip health checks to keep logs focused)
+    if (!req.originalUrl.includes("/health")) {
+      const action = resolveActionName(req.method, req.originalUrl);
+      const status =
+        res.statusCode >= 200 && res.statusCode < 400
+          ? "SUCCESS"
+          : res.statusCode === 429
+          ? "WARNING"
+          : res.statusCode >= 400 && res.statusCode < 500
+          ? "FAILED"
+          : "ERROR";
+
+      recordUserLog({
+        userId: req.userId || null,
+        username: req.username || req.body?.username || "anonymous",
+        action,
+        status,
+        req,
+        endpoint: req.originalUrl,
+        method: req.method,
+        statusCode: res.statusCode,
+        durationMs: duration,
+      });
+    }
   });
   next();
 });
 
 // Health check endpoint (public)
-app.get("/api/health", (req, res) => {
+app.get(HEALTH_ENDPOINT, (req, res) => {
   const db = getDbStatus();
   res.json({
     status: "ok",
@@ -58,10 +102,10 @@ app.get("/api/health", (req, res) => {
 });
 
 // Authentication routes
-app.use("/api/auth", authRoutes);
+app.use(AUTH_ENDPOINT, authRoutes);
 
 // Notes API Routes (protected)
-app.use("/api/notes", notesRoutes);
+app.use(NOTES_ENDPOINT, notesRoutes);
 
 // Error Middlewares
 app.use(notFound);
@@ -70,9 +114,9 @@ app.use(errorHandler);
 // Start server
 const server = app.listen(PORT, async () => {
   console.log(`🚀 Notes API Server running at http://localhost:${PORT}`);
-  console.log(`📡 Health Check: http://localhost:${PORT}/api/health`);
-  console.log(`🔐 Auth Endpoints: http://localhost:${PORT}/api/auth`);
-  console.log(`📝 Notes Endpoint: http://localhost:${PORT}/api/notes`);
+  console.log(`📡 Health Check: http://localhost:${PORT}${HEALTH_ENDPOINT}`);
+  console.log(`🔐 Auth Endpoints: http://localhost:${PORT}${AUTH_ENDPOINT}`);
+  console.log(`📝 Notes Endpoint: http://localhost:${PORT}${NOTES_ENDPOINT}`);
   await connectDB();
 });
 
